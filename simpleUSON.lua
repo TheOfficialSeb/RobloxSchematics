@@ -41,9 +41,9 @@ function encodeTABLE(_table,extraTypesHandle)
 		size = size + 1
 	end
 	Data = Uint32_encode({size})..Data
-	for _,value in next,_table do
-		local _type = type(value) == "table" and 2 or type(value) == "number" and 1 or 0
-		local value = _type == 2 and encodeTABLE(value) or value
+	for k,value in next,_table do
+		local _type = type(value) == "table" and 3 or type(value) == "boolean" and 2 or type(value) == "number" and 1 or 0
+		local value = _type == 3 and encodeTABLE(value) or _type == 2 and (value and "\255" or "\0") or value
 		Data = Data..Uint32_encode({#tostring(value)})..string.char(_type)..tostring(value)
 	end
 	return Data
@@ -65,7 +65,11 @@ function decodeTABLE(_string)
 		local ksize = Uint32_decode(_string:sub(1,4))[1]
 		local _type = _string:sub(5,5):byte()
 		local value = _string:sub(6,5+ksize)
-		_table[keys[index]] = _type == 2 and decodeTABLE(value) or _type == 1 and tonumber(value) or value
+        if _type == 2 then
+            _table[keys[index]] = value:byte()>0
+        else
+		    _table[keys[index]] = _type == 3 and decodeTABLE(value) or _type == 1 and tonumber(value) or value
+        end
 		_string = _string:sub(6+ksize)
 	end
 	return _table
